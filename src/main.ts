@@ -18,33 +18,35 @@ async function main() {
         let actionName = 'AzurePowerShellAction';
         let userAgentString = (!!userAgentPrefix ? `${userAgentPrefix}+` : '') + `GITHUBACTIONS_${actionName}_${usrAgentRepo}`;
         core.exportVariable('AZURE_HTTP_USER_AGENT', userAgentString);
+        core.exportVariable('AZUREPS_HOST_ENVIRONMENT', userAgentString);
 
         const inlineScript: string = core.getInput('inlineScript', { required: true });
         azPSVersion = core.getInput('azPSVersion', { required: true }).trim().toLowerCase();
         const errorActionPreference: string = core.getInput('errorActionPreference');
         const failOnStandardError = core.getInput('failOnStandardError').trim().toLowerCase() === "true";
         const githubToken = core.getInput('githubToken');
-        console.log(`Validating inputs`);
+        core.info(`Validating inputs`);
         validateInputs(inlineScript, errorActionPreference);
 
         const githubAuth = !githubToken || Utils.isGhes() ? undefined : `token ${githubToken}`;
         const installResult = await new AzModuleInstaller(azPSVersion, githubAuth).install();
-        console.log(`Module Az ${azPSVersion} installed from ${installResult.moduleSource}`);
+        core.info(`Module Az ${azPSVersion} installed from ${installResult.moduleSource}`);
 
-        console.log(`Initializing Az Module`);
+        core.info(`Initializing Az Module`);
         await InitializeAzure.importAzModule(azPSVersion);
-        console.log(`Initializing Az Module Complete`);
+        core.info(`Initializing Az Module Complete`);
 
-        console.log(`Running Az PowerShell Script`);
+        core.info(`Running Az PowerShell Script`);
         const scriptRunner: ScriptRunner = new ScriptRunner(inlineScript, errorActionPreference, failOnStandardError);
         await scriptRunner.executeFile();
-        console.log(`Script execution Complete`);
+        core.info(`Script execution Complete`);
     } catch(error) {
         core.setFailed(error);
     } finally {
         FileUtils.deleteFile(ScriptRunner.filePath);
         // Reset AZURE_HTTP_USER_AGENT
         core.exportVariable('AZURE_HTTP_USER_AGENT', userAgentPrefix);
+        core.exportVariable('AZUREPS_HOST_ENVIRONMENT', userAgentPrefix);
     }
 }
 
@@ -54,7 +56,7 @@ function validateInputs(inlineScript: string, errorActionPreference: string) {
     }
     if (azPSVersion !== "latest") {
         if (!Utils.isValidVersion(azPSVersion)) {
-            console.log(`Invalid azPSVersion : ${azPSVersion}. Using latest Az Module version.`);
+            core.info(`Invalid azPSVersion : ${azPSVersion}. Using latest Az Module version.`);
             azPSVersion = 'latest';
         }
     }
